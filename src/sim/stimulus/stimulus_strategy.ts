@@ -1,4 +1,5 @@
 import type { TDMATime } from "../time";
+import { ConstantStimulus } from "./constant";
 import { GaussianStimulus } from "./gaussian";
 import { UniformStimulus } from "./uniform";
 
@@ -13,4 +14,5 @@ export interface StimulusStrategy {
 export const strategies = [
     UniformStimulus,
     GaussianStimulus,
+    ConstantStimulus
 ];

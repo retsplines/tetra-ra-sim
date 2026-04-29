@@ -25,8 +25,10 @@ export class MS {
 
     /**
      * Advance this MS's state machine.
+     * 
+     * Returns true if the MS transmits a control uplink burst in this subslot, otherwise false.
      */
-    tick(time: TDMATime) {
+    tick(time: TDMATime): boolean {
 
         switch (this.state) {
 
@@ -39,7 +41,8 @@ export class MS {
                 break;
                 
         }
+
+        return false;
     }
-    
 
 }
