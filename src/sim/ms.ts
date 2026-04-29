@@ -18,7 +18,8 @@ export class MS {
     private state: State = State.Idle;
 
     constructor(
-        private messageStimulus: StimulusStrategy
+        private messageStimulus: StimulusStrategy,
+        private accessCode: AccessCode
     ) {
         // Initialize the MS instance
     }
@@ -39,6 +40,10 @@ export class MS {
                     this.state = State.HasMessageToSend;
                 }
                 break;
+
+            case State.HasMessageToSend:
+
+                // Check 
                 
         }
 
