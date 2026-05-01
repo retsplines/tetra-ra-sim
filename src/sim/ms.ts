@@ -1,11 +1,22 @@
 import { AccessCode } from './access_code';
+import { IMM } from './imm';
 import type { StimulusStrategy } from './stimulus/stimulus_strategy';
+import type { Tick } from './tick';
 import type { TDMATime } from './time';
 
 enum State {
+
+    // The MS is idle and has no message to send
     Idle,
+
+    // MS has a message to transmit and is waiting for IMM
     HasMessageToSend,
-    
+
+    // MS is waiting for an access frame
+    WaitingForAccessFrame,
+
+    // MS has obtained an access frame, decided on a subslot and is waiting for it
+    WaitingForRandomSubslotWithinAccessFrame,
 }
 
 /**
@@ -17,6 +28,18 @@ export class MS {
     // The current state of this MS
     private state: State = State.Idle;
 
+    // The current "imm" value for the MS
+    private imm = 0;
+
+    // The current "WT" value for the MS
+    private wt = 0;
+
+    // The current "nu" value for the MS
+    private nu = 0;
+
+    // The calculated random subslot index that this MS will attempt to transmit in within the current access frame
+    private randomSubslotIndex = 0;
+
     constructor(
         private messageStimulus: StimulusStrategy,
         private accessCode: AccessCode
@@ -26,10 +49,9 @@ export class MS {
 
     /**
      * Advance this MS's state machine.
-     * 
-     * Returns true if the MS transmits a control uplink burst in this subslot, otherwise false.
+     * Returns a Tick that represents the action/state change that occurred.
      */
-    tick(time: TDMATime): boolean {
+    tick(time: TDMATime): Tick {
 
         switch (this.state) {
 
@@ -38,12 +60,43 @@ export class MS {
                 // Decide if we should transition to the "HasMessageToSend" state based on the stimulus
                 if (this.messageStimulus.shouldProc(time)) {
                     this.state = State.HasMessageToSend;
+                    this.imm = this.accessCode.getIMM();
+                    this.nu = this.accessCode.getNU();
+
+                    // If "always randomise" is set, then we skip straight to waiting for an access frame
+                    if (this.accessCode.getIMM() == IMM.AlwaysRandomise) {
+                        this.state = State.WaitingForAccessFrame;
+                    }
                 }
+                
                 break;
 
             case State.HasMessageToSend:
 
-                // Check 
+                // Is this an opportunity?
+                // TODO: Check - if it *is* an opportunity, then there's a 50:50 chance of the MS picking this subslot or the next one
+
+                // Has IMM expired?
+                if (this.imm == 0) {
+                    this.state = State.WaitingForAccessFrame;
+                } else {
+                    this.imm--;
+                }
+
+                break;
+
+            case State.WaitingForAccessFrame:
+
+                // Is this the start of an access frame?
+                // TODO: Check
+
+                break;
+
+            case State.WaitingForRandomSubslotWithinAccessFrame:
+
+                break;
+
+                    
                 
         }
 

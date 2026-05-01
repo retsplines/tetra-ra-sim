@@ -1,11 +1,14 @@
 import type { AccessCode } from './access_code.ts';
 import { MS } from './ms.ts';
+import { TDMATime } from './time.ts';
 
-class Simulation {
+export class Sim {
 
     private population: MS[] = [];
 
     private accessCodes: AccessCode[] = [];
+
+    private time: TDMATime = new TDMATime();
 
     constructor(
         populationSize: number
@@ -13,4 +16,11 @@ class Simulation {
 
     }
 
+    public tick() {
+        this.time.tick();
+    }
+
+    public getTime() {
+        return this.time;
+    }
 }

@@ -1,5 +1,3 @@
-
-export const SUBSLOTS_PER_SLOT = 2;
 export const SLOTS_PER_FRAME = 4;
 export const FRAMES_PER_MULTIFRAME = 18;
 
@@ -8,48 +6,91 @@ export const FRAMES_PER_MULTIFRAME = 18;
  */
 export class TDMATime {
 
-    private multiframe = 0;
-    private frame = 0
-    private slot = 0;
-    private subslot = 0;
+    private slot: number;
+    private frame: number;
+    private multiframe: number;
 
-    constructor(multiframe: number, frame: number, slot: number, subslot: number) {
-        this.multiframe = multiframe;
-        this.frame = frame;
+    public constructor(
+        slot: number = 1,
+        frame: number = 1,
+        multiframe: number = 1
+    ) {
+        TDMATime.assertRange(slot, 1, SLOTS_PER_FRAME, "slot");
+        TDMATime.assertRange(frame, 1, FRAMES_PER_MULTIFRAME, "frame");
+
         this.slot = slot;
-        this.subslot = subslot;
+        this.frame = frame;
+        this.multiframe = multiframe;
+    }
+
+    public tick(): void {
+        this.slot++;
+
+        if (this.slot > SLOTS_PER_FRAME) {
+            this.slot = 1;
+            this.frame++;
+
+            if (this.frame > FRAMES_PER_MULTIFRAME) {
+                this.frame = 1;
+                this.multiframe++;
+            }
+        }
+    }
+
+    public toTimestamp(): number {
+        return (
+            ((((this.multiframe - 1) * FRAMES_PER_MULTIFRAME) + (this.frame - 1)) * SLOTS_PER_FRAME + (this.slot - 1))
+        );
+    }
+
+    public static fromTimestamp(timestamp: number): TDMATime {
+        if (!Number.isInteger(timestamp) || timestamp < 0) {
+            throw new RangeError("timestamp must be a non-negative integer");
+        }
+
+        const slotsPerCycle =
+            SLOTS_PER_FRAME *
+            FRAMES_PER_MULTIFRAME;
+
+        // Wrap the timestamp to the current cycle (multiframe)
+        // We ignore the existence of multiframes here since the simulation won't run that long
+        let remaining = timestamp % slotsPerCycle;
+
+        const multiframe = Math.floor(remaining / (SLOTS_PER_FRAME * FRAMES_PER_MULTIFRAME)) + 1;
+        remaining %= SLOTS_PER_FRAME * FRAMES_PER_MULTIFRAME;
+
+        const frame = Math.floor(remaining / (SLOTS_PER_FRAME)) + 1;
+        remaining %= SLOTS_PER_FRAME;
+
+        return new TDMATime(remaining, frame, multiframe);
+    }
+
+    private static assertRange(value: number, min: number, max: number, name: string): void {
+        if (!Number.isInteger(value) || value < min || value > max) {
+            throw new RangeError(`${name} must be an integer in range ${min}-${max}`);
+        }
+    }
+
+    public getSlot(): number {
+        return this.slot;
+    }
+
+    public getFrame(): number {
+        return this.frame;
+    }
+
+    public getMultiframe(): number {
+        return this.multiframe;
     }
 
     /**
-     * Advance the timestamp by one subslot.
+     * Returns true if this time corresponds to a CLCH reserved slot.
      */
-    public tick() {
-        
-        this.subslot ++;
+    public isCLCH(): boolean {
+        return this.frame === 18 && this.slot === (4 - ((this.multiframe + 1) % 4));
+    }
 
-        if (this.subslot >= SUBSLOTS_PER_SLOT) {
-            this.subslot = 0;
-            this.slot ++;
-
-            if (this.slot >= SLOTS_PER_FRAME) {
-                this.slot = 0;
-                this.frame ++;
-
-                if (this.frame >= FRAMES_PER_MULTIFRAME) {
-                    this.frame = 0;
-                    this.multiframe ++;
-                }
-            }
-        }
-    }   
-
-    /**
-     * Returns the timestamp as a count of subslots.
-     */
-    public timestamp() {
-        return this.multiframe * FRAMES_PER_MULTIFRAME * SLOTS_PER_FRAME * SUBSLOTS_PER_SLOT +
-            this.frame * SLOTS_PER_FRAME * SUBSLOTS_PER_SLOT +
-            this.slot * SUBSLOTS_PER_SLOT +
-            this.subslot;
+    public isControlFrame(): boolean {
+        return this.frame === 18;
     }
 }
