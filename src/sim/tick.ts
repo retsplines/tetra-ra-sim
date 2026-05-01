@@ -7,8 +7,8 @@ export abstract class Tick {
 /**
  * A tick where an MS transmitted an access attempt.
  */
-export abstract class Transmitted extends Tick {
-    constructor(public tickIndex: number) {
+export class TickTransmitted extends Tick {
+    constructor(public subslotIndex: number) {
         super();
     }
 }

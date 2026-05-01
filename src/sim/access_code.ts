@@ -27,6 +27,16 @@ export class AccessCode {
     }
 
     /**
+     * Get the index of an access code based on its "letter" name.
+     */
+    public static getIndex(name: string): number {
+        if (name.length !== 1 || name < 'A' || name > 'D') {
+            throw new Error(`Invalid access code name: ${name}`);
+        }
+        return name.charCodeAt(0) - 65;
+    }
+
+    /**
      * Checks if this access code is valid for the given timeslot index and subscriber class.
      * The timeslot index must be included in the timeslot pointer, and at least one subscriber class must be included in the access code subscriber classes.
      */

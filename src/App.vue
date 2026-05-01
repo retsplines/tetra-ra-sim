@@ -17,7 +17,7 @@
         <div class="section">
             <div class="heading">Simulation Parameters</div>
             <div class="body">
-                <p>TODO: Add controls for simulation parameters here.</p>
+                <SimParameters :sim="sim"></SimParameters>
             </div>
         </div>
 
@@ -52,6 +52,7 @@ import { Sim }  from './sim/sim';
 import { MS }  from './sim/ms';
 import AccessCode from './AccessCode.vue';
 import MobileStation from './MobileStation.vue';
+import SimParameters from './SimParameters.vue';
 
 const sim = ref<Sim>(new Sim());
 

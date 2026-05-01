@@ -19,12 +19,7 @@ defineProps<{
         <div class="properties">
 
             <div class="state">
-                <span v-if="mobileStation.getState() === MSState.Idle">Idle</span>
-                <span v-else-if="mobileStation.getState() === MSState.HasMessageToSend">Waiting for Opportunity</span>
-                <span v-else-if="mobileStation.getState() === MSState.WaitingForAccessFrame">Waiting for Access Frame</span>
-                <span v-else-if="mobileStation.getState() === MSState.WaitingForRandomSubslotWithinAccessFrame">Waiting for Random Subslot</span>
-                <span v-else-if="mobileStation.getState() === MSState.GivenUp">Given Up</span>
-                <span v-else-if="mobileStation.getState() === MSState.Succeeded">Succeeded</span>
+                {{ mobileStation.getStateDescription() }}
             </div>
 
             <div class="access-codes">
@@ -37,7 +32,9 @@ defineProps<{
             
         </div>
         <div class="actions">
-            <button @click="mobileStation.requestMessage()">Req. Msg</button>
+            <button v-if="mobileStation.getState() == State.Idle" @click="mobileStation.requestMessage()">Req. Msg</button>
+            <button v-if="mobileStation.getState() == State.WaitingForResponse" @click="mobileStation.provideResponse()">Respond</button>
+            <button v-if="mobileStation.getState() == State.Succeeded || mobileStation.getState() == State.GivenUp" @click="mobileStation.reset()">Reset</button>
         </div>
     </div>
 </template>
