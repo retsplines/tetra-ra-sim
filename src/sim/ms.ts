@@ -1,10 +1,10 @@
 import { AccessCode } from './access_code';
 import { IMM } from './imm';
-import type { StimulusStrategy } from './stimulus/stimulus_strategy';
+import type { Sim } from './sim';
 import type { Tick } from './tick';
 import type { TDMATime } from './time';
 
-enum State {
+export enum State {
 
     // The MS is idle and has no message to send
     Idle,
@@ -17,6 +17,12 @@ enum State {
 
     // MS has obtained an access frame, decided on a subslot and is waiting for it
     WaitingForRandomSubslotWithinAccessFrame,
+
+    // MS has given up (WT expired)
+    GivenUp,
+
+    // MS has successfully transmitted its message
+    Succeeded
 }
 
 /**
@@ -40,11 +46,29 @@ export class MS {
     // The calculated random subslot index that this MS will attempt to transmit in within the current access frame
     private randomSubslotIndex = 0;
 
+    // Has a message been requested?
+    private messageRequested = false;
+
     constructor(
-        private messageStimulus: StimulusStrategy,
-        private accessCode: AccessCode
+        public readonly issi: number,
+        public accessCode: AccessCode,
+        public readonly sim: Sim
     ) {
         // Initialize the MS instance
+    }
+
+    /**
+     * Mark the MS as having a message to send.
+     */
+    public requestMessage() {
+        this.messageRequested = true;
+    }
+
+    /**
+     * Get the current state of the MS.
+     */
+    public getState(): State {
+        return this.state;
     }
 
     /**
@@ -58,13 +82,13 @@ export class MS {
             case State.Idle:
 
                 // Decide if we should transition to the "HasMessageToSend" state based on the stimulus
-                if (this.messageStimulus.shouldProc(time)) {
+                if (this.messageRequested) {
                     this.state = State.HasMessageToSend;
-                    this.imm = this.accessCode.getIMM();
-                    this.nu = this.accessCode.getNU();
+                    this.imm = this.accessCode.imm;
+                    this.nu = this.accessCode.nu;
 
                     // If "always randomise" is set, then we skip straight to waiting for an access frame
-                    if (this.accessCode.getIMM() == IMM.AlwaysRandomise) {
+                    if (this.accessCode.imm == IMM.AlwaysRandomise) {
                         this.state = State.WaitingForAccessFrame;
                     }
                 }
@@ -96,8 +120,6 @@ export class MS {
 
                 break;
 
-                    
-                
         }
 
         return false;

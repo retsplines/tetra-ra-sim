@@ -1,41 +1,29 @@
 import type { IMM } from "./imm";
 
+export const ALL_SUBSCRIBER_CLASSES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+
 /**
  * An access code 
  */
 export class AccessCode {
 
     constructor(
-        private imm: IMM,
-        private wt: number,
-        private nu: number,
-        private frameLengthFactor: number,
-        private timeslotPointer: [boolean, boolean, boolean, boolean],
-        private subscriberClasses: number[],
+        public imm: IMM,
+        public wt: number,
+        public nu: number,
+        public frameLengthFactor: number,
+        public timeslotPointer: [boolean, boolean, boolean, boolean],
+        public subscriberClasses: number[] = ALL_SUBSCRIBER_CLASSES,
     ) {}
 
-    getIMM(): IMM {
-        return this.imm;
-    }
-
-    getWT(): number {
-        return this.wt;
-    }   
-
-    getNU(): number {
-        return this.nu;
-    }
-
-    getFrameLengthFactor(): number {
-        return this.frameLengthFactor;
-    }
-
-    getTimeslotPointer(): [boolean, boolean, boolean, boolean] {
-        return this.timeslotPointer;
-    }
-
-    getSubscriberClasses(): number[] {
-        return this.subscriberClasses;
+    /**
+     * Get the "letter" name of an access code based on index.
+     */
+    public static getName(index: number): string {
+        if (index < 0) {
+            throw new Error(`Invalid access code index: ${index}`);
+        }
+        return String.fromCharCode(65 + index);
     }
 
     /**

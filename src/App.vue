@@ -6,47 +6,71 @@
         </div>
 
         <div class="section">
+            <div class="heading">Control</div>
+            <div class="body">
+                {{ sim.getTime().toString() }}
+                <button @click="sim.tick()">Advance</button>
+                <button @click="sim.reset()">Reset</button>
+            </div>      
+        </div>
+
+        <div class="section">
             <div class="heading">Simulation Parameters</div>
             <div class="body">
                 <p>TODO: Add controls for simulation parameters here.</p>
             </div>
         </div>
-        
-        <div class="section">
-            <div class="heading">MS Population</div>
-            <div class="body">
-                <p>TODO: Add controls for MS population parameters here.</p>
-            </div>      
-        </div>
 
         <div class="section">
-            <div class="heading">Control</div>
+            <div class="heading">Access Codes</div>
             <div class="body">
-                <button @click="sim.tick()">Tick</button>
+                <AccessCode v-for="(accessCode, index) in sim.getAccessCodes()" :access-code="accessCode" :id="index"></AccessCode>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="heading">
+                MS Population
+                <button @click="addMS()">Add MS</button>
+            </div>
+            <div class="body">
+                <MobileStation v-for="(mobileStation, index) in sim.getMobileStations()" :mobile-station="mobileStation" :id="index"></MobileStation>
             </div>      
         </div>
 
     </div>
 
     <div class="main">
-        <Simulation></Simulation>
     </div>
 
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import Simulation from './Simulation.vue';
-import { Sim }  from './sim/sim';
 
-const sim = ref<Sim>(new Sim(10));
+import { ref } from 'vue';
+import { Sim }  from './sim/sim';
+import { MS }  from './sim/ms';
+import AccessCode from './AccessCode.vue';
+import MobileStation from './MobileStation.vue';
+
+const sim = ref<Sim>(new Sim());
+
+/**
+ * Add an MS to the simulation, by default using Access Code A.
+ */
+function addMS() {
+    // Generate an incremental ISSI based on 1024 + the current number of MS instances
+    const issi = 1024 + sim.value.getMobileStations().length;
+    const ms = new MS(issi, sim.value.getAccessCodes()[0], sim.value);
+    sim.value.addMS(ms);
+}
 
 </script>
 
 <style lang="scss" scoped>
 
 .sidebar {
-    width: 400px;
+    width: 500px;
     height: 100vh;
     background-color: #f0f0f0;
     float: left;

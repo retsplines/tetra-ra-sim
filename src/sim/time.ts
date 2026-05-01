@@ -23,6 +23,10 @@ export class TDMATime {
         this.multiframe = multiframe;
     }
 
+    public toString(): string {
+        return `M${this.multiframe}F${this.frame}S${this.slot}`;
+    }
+
     public tick(): void {
         this.slot++;
 
