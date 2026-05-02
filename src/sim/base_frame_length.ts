@@ -18,16 +18,16 @@ export enum BaseFrameLength {
 
 }
 
-export function getBaseFrameLengthName(baseFrameLength: BaseFrameLength): string {
+export function getBaseFrameLengthName(baseFrameLength: BaseFrameLength, short: boolean = false): string {
     switch (baseFrameLength) {
         case BaseFrameLength.ReservedSubslot:
-            return "Reserved Subslot";
+            return short ? "Res" : "Reserved Subslot";
         case BaseFrameLength.CLCHSubslot:
-            return "CLCH Subslot";
+            return short ? "CLCH" : "CLCH Subslot";
         case BaseFrameLength.OngoingFrame:
-            return "Ongoing Frame";
+            return short ? "Ong" : "Ongoing Frame";
         default:
-            return `Marker - Subslots (${getSubslotCount(baseFrameLength)})`;
+            return short ? `${getSubslotCount(baseFrameLength)} SS` : `Marker - ${getSubslotCount(baseFrameLength)} Subslots`;
     }
 }
 

@@ -22,9 +22,13 @@ export class TDMATime {
         this.frame = frame;
         this.multiframe = multiframe;
     }
+    
+    public clone(): TDMATime {
+        return new TDMATime(this.slot, this.frame, this.multiframe);
+    }
 
     public toString(): string {
-        return `M${this.multiframe}F${this.frame}S${this.slot}`;
+        return `M${this.multiframe} F${this.frame} T${this.slot}`;
     }
 
     public tick(): void {

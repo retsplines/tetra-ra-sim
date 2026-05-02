@@ -22,6 +22,12 @@ defineProps<{
                 {{ mobileStation.getStateDescription() }}
             </div>
 
+            <div class="substate">
+                <div>Attempts left {{ mobileStation.attemptsLeft }}</div>
+                <div>IMM slots left {{ mobileStation.immSlotsLeft }}</div>
+                <div>WT opportunities left {{ mobileStation.wtOpportunities }}</div>
+            </div>
+
             <div class="access-codes">
                 Access Code <select v-model="mobileStation.accessCode">
                     <option v-for="(accessCode, index) in mobileStation.sim.getAccessCodes()" :value="accessCode">
@@ -32,8 +38,8 @@ defineProps<{
             
         </div>
         <div class="actions">
-            <button v-if="mobileStation.getState() == State.Idle" @click="mobileStation.requestMessage()">Req. Msg</button>
-            <button v-if="mobileStation.getState() == State.WaitingForResponse" @click="mobileStation.provideResponse()">Respond</button>
+            <button v-if="mobileStation.getState() == State.Idle" @click="mobileStation.requestMessage()" title="Request to Transmit">RTT</button>
+            <button v-if="mobileStation.getState() == State.WaitingForResponse" @click="mobileStation.provideResponse()" title="Acknowledge">Ack!</button>
             <button v-if="mobileStation.getState() == State.Succeeded || mobileStation.getState() == State.GivenUp" @click="mobileStation.reset()">Reset</button>
         </div>
     </div>

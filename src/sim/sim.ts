@@ -3,6 +3,7 @@ import { AccessField } from './access_field.ts';
 import { BaseFrameLength } from './base_frame_length.ts';
 import { IMM } from './imm.ts';
 import { MS } from './ms.ts';
+import { SlotLog } from './slot_log.ts';
 import { TickEvent } from './tick.ts';
 import { TDMATime } from './time.ts';
 
@@ -27,6 +28,11 @@ export class Sim {
      * The base frame length to use in the simulation for new slots.
      */
     public baseFrameLength: BaseFrameLength = BaseFrameLength.Subslot4;
+
+    /**
+     * Whether to automatically acknowledge an MS's transmission if it is the only one to transmit in that subslot (i.e. no collision occurs).
+     */
+    public autoAckIfNoCollision = true;
 
     /**
      * Access Codes that are registered within the simulation.
@@ -88,7 +94,7 @@ export class Sim {
     /**
      * Advance the simulation by one tick, returning any events that occur during that tick.
      */
-    public tick(): TickEvent[] {
+    public tick(): SlotLog {
         
         // Determine which access code will be used for the two subslots
         let timestamp = this.time.toTimestamp();
@@ -106,19 +112,37 @@ export class Sim {
         let accessField1 = new AccessField(subslot1AccessCode, this.baseFrameLength);
         let accessField2 = new AccessField(subslot2AccessCode, this.baseFrameLength);
 
+        // Set the base frame length to "CLCH" for both slots if the slot is reserved for CLCH
+        if (this.time.isCLCH()) {
+            accessField1.baseFrameLength = BaseFrameLength.CLCHSubslot;
+            accessField2.baseFrameLength = BaseFrameLength.CLCHSubslot;
+        }
+
         this.time.tick();
-        let events = [];
+        let slotLog = new SlotLog(this.time.clone(), [accessField1, accessField2]);
 
         console.log(`Tick ${this.time.toString()}: SSN1 Access Code ${AccessCode.getName(subslot1AccessCodeIndex)}, SSN2 Access Code ${AccessCode.getName(subslot2AccessCodeIndex)}`);
 
         for (const ms of this.population) {
             let msEventOrNull = ms.tick(this.time, [accessField1, accessField2]);
             if (msEventOrNull instanceof TickEvent) {
-                events.push(msEventOrNull);
+                slotLog.pushEvent(msEventOrNull);
             }
         }
+
+        if (slotLog.subslotTransmissions[0].length == 1 && this.autoAckIfNoCollision) {
+            // If there was exactly 1 transmission in subslot 1, acknowledge it
+            slotLog.subslotTransmissions[0][0]!.provideResponse();
+            console.log(`Auto-acknowledging MS ${slotLog.subslotTransmissions[0][0]!.issi} in subslot 1`);
+        }
+
+        if (slotLog.subslotTransmissions[1].length == 1 && this.autoAckIfNoCollision) {
+            // If there was exactly 1 transmission in subslot 2, acknowledge it
+            slotLog.subslotTransmissions[1][0]!.provideResponse();
+            console.log(`Auto-acknowledging MS ${slotLog.subslotTransmissions[1][0]!.issi} in subslot 2`);
+        }
         
-        return events;
+        return slotLog;
     }
 
     /**
@@ -126,6 +150,11 @@ export class Sim {
      */
     public reset() {
         this.time = new TDMATime();
+
+        // Reset all MS
+        for (const ms of this.population) {
+            ms.reset();
+        }
     }
 
     public getTime(): TDMATime {

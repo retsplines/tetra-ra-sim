@@ -24,6 +24,12 @@ defineProps<{
             <BaseFrameLength v-model="sim.baseFrameLength"></BaseFrameLength>
         </label>
     </div>
+    <div class="parameter">
+        <label>
+            Auto-Ack if no collision?
+            <input type="checkbox" v-model="sim.autoAckIfNoCollision" />
+        </label>
+    </div>  
 </div>
 
 </template>

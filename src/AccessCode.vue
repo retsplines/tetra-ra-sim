@@ -15,7 +15,7 @@ const props = defineProps<{
 
 <template>
     <div class="access-code" v-bind:class="{'disabled': accessCode.nu == 0}">
-        <span class="id">{{ AC.getName(props.id) }}</span>
+        <span class="id" v-bind:class="'access-code-' + AC.getName(props.id)">{{ AC.getName(props.id) }}</span>
             <label>
                 IMM
                 <input type="number" min="0" max="15" step="1" v-model="accessCode.imm">

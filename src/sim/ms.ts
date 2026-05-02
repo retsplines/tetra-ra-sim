@@ -3,7 +3,7 @@ import type { AccessField } from './access_field';
 import { BaseFrameLength, getSubslotCount } from './base_frame_length';
 import { IMM } from './imm';
 import type { Sim } from './sim';
-import { TickAborted, TickTransmitted, type TickEvent } from './tick';
+import { TickAborted, TickReceivedResponse, TickTransmitted, type TickEvent } from './tick';
 import { SLOTS_PER_FRAME, TDMATime } from './time';
 
 export enum State {
@@ -40,13 +40,13 @@ export class MS {
     private state: State = State.Idle;
 
     // The number of IMM slots remaining for the MS
-    private immSlotsLeft = 0;
+    public immSlotsLeft = 0;
 
     // The number of WT downlink opportunities left for this MS
-    private wtOpportunities = 0;
+    public wtOpportunities = 0;
 
     // The current number of attempts left for the MS
-    private attemptsLeft = 0;
+    public attemptsLeft = 0;
 
     // The calculated random subslot index that this MS will attempt to transmit in within the current access frame
     private randomSubslotIndex = 0;
@@ -105,6 +105,13 @@ export class MS {
     public reset() {
         this.state = State.Idle;
         this.responseProvided = false;
+        this.immSlotsLeft = 0;
+        this.wtOpportunities = 0;
+        this.attemptsLeft = 0;
+        this.randomSubslotIndex = 0;
+        this.usedAccessCode = null;
+        this.subslotsWaited = 0;
+        this.requestSlot = 0;
     }
 
     /**
@@ -215,9 +222,10 @@ export class MS {
     /**
      * Reset the MS's state to reflect that it has just transmitted.
      */
-    private transmit(time: TDMATime) {
+    private transmit(time: TDMATime, subslot: 0 | 1) {
         this.log(`Transmitting in slot ${time.toString()}...`);
         this.wtOpportunities = this.accessCode.wt;
+        this.attemptsLeft--;
         this.requestSlot = time.getSlot();
         this.subslotsWaited = 0;
         this.state = State.WaitingForResponse;
@@ -234,7 +242,7 @@ export class MS {
             if (this.subslotsWaited == this.randomSubslotIndex) {
                 // This is the subslot we selected, so we attempt to transmit here
                 this.log(`Subslot ${time.toString()}-${subslotIndex + 1} is the random subslot we are looking for!`);
-                this.transmit(time);
+                this.transmit(time, subslotIndex as 0 | 1);
                 return true;
             } else {
                 // Not there yet, but this subslot counts towards waiting for the random subslot
@@ -283,8 +291,8 @@ export class MS {
 
                 if (validSubslots.length > 0) {
                     // Attempt to transmit in the selected subslot
-                    this.transmit(time);
-                    return new TickTransmitted(validSubslots[0]! as 0 | 1);
+                    this.transmit(time, validSubslots[0]! as 0 | 1);
+                    return new TickTransmitted(this, validSubslots[0]! as 0 | 1);
                 }
 
                 // Has IMM expired?
@@ -337,11 +345,16 @@ export class MS {
 
                     // Started in the first subslot?
                     if (subslotUsed == 0) {
-                        this.checkRandomSubslot(time, subslotFields[0], 0);
+                        if (this.checkRandomSubslot(time, subslotFields[0], 0)) {
+                            // We attempted to transmit in the first subslot, so we can return early here
+                            return new TickTransmitted(this, 0);
+                        }
                     }
 
                     // Always check the second subslot as well
-                    this.checkRandomSubslot(time, subslotFields[1], 1);
+                    if (this.checkRandomSubslot(time, subslotFields[1], 1)) {
+                        return new TickTransmitted(this, 1);
+                    }
                 }
 
                 break;
@@ -355,6 +368,7 @@ export class MS {
                     if (this.responseProvided) {
                         this.state = State.Succeeded;
                         this.log(`Response received, transmission succeeded.`);
+                        return new TickReceivedResponse(this);
                     } else {
                         this.wtOpportunities--;
                         this.log(`Downlink opportunity for response, but no response provided. WT opportunities left: ${this.wtOpportunities}.`);
@@ -366,10 +380,9 @@ export class MS {
                         if (this.attemptsLeft == 0) {
                             this.log(`WT expired and no attempts left, giving up.`);
                             this.state = State.GivenUp;
-                            return new TickAborted();
+                            return new TickAborted(this);
                         } else {
                             // Otherwise, we go back to waiting for an access frame to try again
-                            this.attemptsLeft--;
                             this.log(`WT expired, attempts left: ${this.attemptsLeft}. Re-trying...`);
                             this.state = State.WaitingForAccessFrame;
                         }
@@ -383,7 +396,7 @@ export class MS {
                 // Check if either of the subslots in this slot are to be counted
                 for (let i = 0; i < subslotFields.length; i++) {
                     if (this.checkRandomSubslot(time, subslotFields[i]!, i)) {
-                        break;
+                        return new TickTransmitted(this, i as 0 | 1);
                     }
                 }
 

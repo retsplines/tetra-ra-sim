@@ -10,7 +10,8 @@
             <div class="body">
                 {{ sim.getTime().toString() }}
                 <button @click="tick()">Advance</button>
-                <button @click="sim.reset()">Reset</button>
+                <button @click="autorun = !autorun">{{  autorun ? 'Stop' : 'Start' }}</button>
+                <button @click="reset()">Reset</button>
             </div>      
         </div>
 
@@ -42,7 +43,7 @@
 
     <div class="main">
 
-        <Slot v-for="(slotLog, index) in slotLogs" :slot-log="slotLog" :id="index"></Slot>
+        <Slot v-for="(slotLog, index) in slotLogs" :slot-log="slotLog" :sim="sim" :id="index"></Slot>
 
     </div>
 
@@ -56,41 +57,20 @@ import { MS }  from './sim/ms';
 import AccessCode from './AccessCode.vue';
 import MobileStation from './MobileStation.vue';
 import SimParameters from './SimParameters.vue';
-import { TDMATime } from './sim/time';
-import { TickEvent, TickTransmitted } from './sim/tick';
 import Slot from './Slot.vue';
+import type { SlotLog } from './sim/slot_log';
 
 const sim = ref<Sim>(new Sim());
 
-// TODO - Populate this in sim instead
-// Needs to also capture the access code used for each subslot, so we can display that in the logs
-class SlotLog {
-
-    private events: TickEvent[] = [];
-    public transmitted: [boolean, boolean] = [false, false];
-    public collided: [boolean, boolean] = [false, false];
-
-    constructor(public time: TDMATime) {
+// 1 frame = 56ms
+// 1 slot = 14ms
+// Autorun by default at 1/30 speed, so 1 slot = 420ms
+const autorun = ref(false);
+setInterval(() => {
+    if (autorun.value) {
+        tick();
     }
-
-    public pushEvent(event: TickEvent) {
-
-        // Log the event
-        this.events.push(event);
-
-        if (event instanceof TickTransmitted) {
-
-            // Already transmitted-in?
-            if (this.transmitted[event.subslot]) {
-                this.collided[event.subslot] = true;
-            }
-
-            this.transmitted[event.subslot] = true;
-        }
-        
-    }
-    
-}
+}, 420);    
 
 const slotLogs = ref<SlotLog[]>([]);
 
@@ -108,12 +88,13 @@ function addMS() {
  * Advance the simulation by one tick, and log any events that occur.
  */
 function tick() {
-    let log = new SlotLog(sim.value.getTime());
-    let events = sim.value.tick();
-    for (const event of events) {
-        log.pushEvent(event);
-    }
-    slotLogs.value.push(log);
+    slotLogs.value.push(sim.value.tick());
+}
+
+function reset() {
+    sim.value.reset();
+    slotLogs.value = [];
+    autorun.value = false;
 }
 
 </script>
@@ -152,6 +133,8 @@ function tick() {
     display: flex;
     flex-direction: row;
     flex: 1;
+    gap: 5px;
+    padding: 5px;
     // wrap
     flex-wrap: wrap;
     // align items to the top
