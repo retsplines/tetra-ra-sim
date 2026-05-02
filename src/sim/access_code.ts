@@ -11,7 +11,7 @@ export class AccessCode {
         public imm: IMM,
         public wt: number,
         public nu: number,
-        public frameLengthFactor: number,
+        public frameLengthFactor: boolean,
         public timeslotPointer: [boolean, boolean, boolean, boolean],
         public subscriberClasses: number[] = ALL_SUBSCRIBER_CLASSES,
     ) {}

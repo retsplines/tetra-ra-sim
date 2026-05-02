@@ -3,7 +3,7 @@ import { AccessField } from './access_field.ts';
 import { BaseFrameLength } from './base_frame_length.ts';
 import { IMM } from './imm.ts';
 import { MS } from './ms.ts';
-import type { Tick } from './tick.ts';
+import { TickEvent } from './tick.ts';
 import { TDMATime } from './time.ts';
 
 export class Sim {
@@ -26,7 +26,7 @@ export class Sim {
     /**
      * The base frame length to use in the simulation for new slots.
      */
-    public baseFrameLength: BaseFrameLength = BaseFrameLength.Subslot1;
+    public baseFrameLength: BaseFrameLength = BaseFrameLength.Subslot4;
 
     /**
      * Access Codes that are registered within the simulation.
@@ -36,9 +36,9 @@ export class Sim {
 
         new AccessCode(
             IMM.Immediate,
-            5,
-            5,
-            1,
+            3,
+            3,
+            false,
             [true, false, false, false],
             ALL_SUBSCRIBER_CLASSES
         ),
@@ -47,7 +47,7 @@ export class Sim {
             IMM.Immediate,
             0,
             0,
-            1,
+            false,
             [true, false, false, false],
             ALL_SUBSCRIBER_CLASSES
         ),
@@ -56,7 +56,7 @@ export class Sim {
             IMM.Immediate,
             0,
             0,
-            1,
+            false,
             [true, false, false, false],
             ALL_SUBSCRIBER_CLASSES
         ),
@@ -65,7 +65,7 @@ export class Sim {
             IMM.Immediate,
             0,
             0,
-            1,
+            false,
             [true, false, false, false],
             ALL_SUBSCRIBER_CLASSES
         ),
@@ -88,7 +88,7 @@ export class Sim {
     /**
      * Advance the simulation by one tick, returning any events that occur during that tick.
      */
-    public tick(): Tick[] {
+    public tick(): TickEvent[] {
         
         // Determine which access code will be used for the two subslots
         let timestamp = this.time.toTimestamp();
@@ -97,8 +97,10 @@ export class Sim {
         let patternIndexes = this.accessCodePattern.split("").map(char => char.charCodeAt(0) - "A".charCodeAt(0));
 
         // Determine the access codes for the two subslots based on the pattern and the current timestamp
-        let subslot1AccessCode = this.accessCodes[patternIndexes[(timestamp * 2) % patternIndexes.length]!]!;
-        let subslot2AccessCode = this.accessCodes[patternIndexes[(timestamp * 2 + 1) % patternIndexes.length]!]!;
+        let subslot1AccessCodeIndex = patternIndexes[(timestamp * 2) % patternIndexes.length]!;
+        let subslot2AccessCodeIndex = patternIndexes[(timestamp * 2 + 1) % patternIndexes.length]!;
+        let subslot1AccessCode = this.accessCodes[subslot1AccessCodeIndex]!;
+        let subslot2AccessCode = this.accessCodes[subslot2AccessCodeIndex]!;
         
         // Build the two access fields
         let accessField1 = new AccessField(subslot1AccessCode, this.baseFrameLength);
@@ -107,8 +109,13 @@ export class Sim {
         this.time.tick();
         let events = [];
 
+        console.log(`Tick ${this.time.toString()}: SSN1 Access Code ${AccessCode.getName(subslot1AccessCodeIndex)}, SSN2 Access Code ${AccessCode.getName(subslot2AccessCodeIndex)}`);
+
         for (const ms of this.population) {
-            events.push(ms.tick(this.time, [accessField1, accessField2]));
+            let msEventOrNull = ms.tick(this.time, [accessField1, accessField2]);
+            if (msEventOrNull instanceof TickEvent) {
+                events.push(msEventOrNull);
+            }
         }
         
         return events;

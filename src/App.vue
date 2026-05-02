@@ -9,7 +9,7 @@
             <div class="heading">Control</div>
             <div class="body">
                 {{ sim.getTime().toString() }}
-                <button @click="sim.tick()">Advance</button>
+                <button @click="tick()">Advance</button>
                 <button @click="sim.reset()">Reset</button>
             </div>      
         </div>
@@ -41,6 +41,9 @@
     </div>
 
     <div class="main">
+
+        <Slot v-for="(slotLog, index) in slotLogs" :slot-log="slotLog" :id="index"></Slot>
+
     </div>
 
 </template>
@@ -53,8 +56,43 @@ import { MS }  from './sim/ms';
 import AccessCode from './AccessCode.vue';
 import MobileStation from './MobileStation.vue';
 import SimParameters from './SimParameters.vue';
+import { TDMATime } from './sim/time';
+import { TickEvent, TickTransmitted } from './sim/tick';
+import Slot from './Slot.vue';
 
 const sim = ref<Sim>(new Sim());
+
+// TODO - Populate this in sim instead
+// Needs to also capture the access code used for each subslot, so we can display that in the logs
+class SlotLog {
+
+    private events: TickEvent[] = [];
+    public transmitted: [boolean, boolean] = [false, false];
+    public collided: [boolean, boolean] = [false, false];
+
+    constructor(public time: TDMATime) {
+    }
+
+    public pushEvent(event: TickEvent) {
+
+        // Log the event
+        this.events.push(event);
+
+        if (event instanceof TickTransmitted) {
+
+            // Already transmitted-in?
+            if (this.transmitted[event.subslot]) {
+                this.collided[event.subslot] = true;
+            }
+
+            this.transmitted[event.subslot] = true;
+        }
+        
+    }
+    
+}
+
+const slotLogs = ref<SlotLog[]>([]);
 
 /**
  * Add an MS to the simulation, by default using Access Code A.
@@ -64,6 +102,18 @@ function addMS() {
     const issi = 1024 + sim.value.getMobileStations().length;
     const ms = new MS(issi, sim.value.getAccessCodes()[0], sim.value);
     sim.value.addMS(ms);
+}
+
+/**
+ * Advance the simulation by one tick, and log any events that occur.
+ */
+function tick() {
+    let log = new SlotLog(sim.value.getTime());
+    let events = sim.value.tick();
+    for (const event of events) {
+        log.pushEvent(event);
+    }
+    slotLogs.value.push(log);
 }
 
 </script>
@@ -98,10 +148,16 @@ function addMS() {
 }
 
 .main {
-    height: 100vh;
     background-color: #ffffff;
-    float: left;
+    display: flex;
+    flex-direction: row;
     flex: 1;
+    // wrap
+    flex-wrap: wrap;
+    // align items to the top
+    align-items: flex-start;
+    // justify content to the start
+    justify-content: flex-start;
 }
 
 </style>
