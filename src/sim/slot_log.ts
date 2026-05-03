@@ -7,8 +7,9 @@ import type { TDMATime } from "./time";
 export class SlotLog {
 
     private events: TickEvent[] = [];
-    public subslotTransmissions: [MS[], MS[]] = [[], []];
-    public receptions: MS[] = [];
+    public subslotTransmissions: [TickTransmitted[], TickTransmitted[]] = [[], []];
+    public receptions: TickReceivedResponse[] = [];
+    public muted = false;
 
     constructor(public time: TDMATime, public accessFields: [AccessField, AccessField]) {
     }
@@ -21,13 +22,13 @@ export class SlotLog {
         if (event instanceof TickTransmitted) {
 
             // Add the MS to the list of transmissions for the relevant subslot
-            this.subslotTransmissions[event.subslot].push(event.who);
+            this.subslotTransmissions[event.subslot].push(event);
             
         }
 
         if (event instanceof TickReceivedResponse) {
             // Add the MS to the list of receptions
-            this.receptions.push(event.who);
+            this.receptions.push(event);
         }
     }
     

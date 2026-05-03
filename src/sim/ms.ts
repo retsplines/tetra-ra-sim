@@ -48,6 +48,9 @@ export class MS {
     // The current number of attempts left for the MS
     public attemptsLeft = 0;
 
+    // The calculated access frame length for the access frame we are currently using
+    private calculatedAccessFrameLength = 0;
+
     // The calculated random subslot index that this MS will attempt to transmit in within the current access frame
     private randomSubslotIndex = 0;
 
@@ -73,6 +76,13 @@ export class MS {
 
     private log(...args: any[]) {
         console.log(`[MS ${this.issi}]`, ...args);
+    }
+
+    /**
+     * Is this MS effectively idle?
+     */
+    public isEffectivelyIdle(): boolean {
+        return this.state == State.Idle || this.state == State.GivenUp || this.state == State.Succeeded;
     }
 
     /**
@@ -228,6 +238,7 @@ export class MS {
         this.attemptsLeft--;
         this.requestSlot = time.getSlot();
         this.subslotsWaited = 0;
+        this.responseProvided = false;
         this.state = State.WaitingForResponse;
     }
 
@@ -292,7 +303,7 @@ export class MS {
                 if (validSubslots.length > 0) {
                     // Attempt to transmit in the selected subslot
                     this.transmit(time, validSubslots[0]! as 0 | 1);
-                    return new TickTransmitted(this, validSubslots[0]! as 0 | 1);
+                    return new TickTransmitted(this, validSubslots[0]! as 0 | 1, true);
                 }
 
                 // Has IMM expired?
@@ -324,12 +335,12 @@ export class MS {
 
                 if (subslotField !== null) {
                     
-                    const calculatedAccessFrameLength = getSubslotCount(subslotField.baseFrameLength) * (this.accessCode.frameLengthFactor ? 4 : 1);
-                    this.log(`Found suitable access frame (len ${calculatedAccessFrameLength}) starting at subslot ${time.toString()}-${subslotUsed + 1}`);
+                    this.calculatedAccessFrameLength = getSubslotCount(subslotField.baseFrameLength) * (this.accessCode.frameLengthFactor ? 4 : 1);
+                    this.log(`Found suitable access frame (len ${this.calculatedAccessFrameLength}) starting at subslot ${time.toString()}-${subslotUsed + 1}`);
 
                     // We found the start of a suitable access frame
                     // Calculate the random subslot index that we will attempt to transmit in within this access frame
-                    this.randomSubslotIndex = Math.floor(Math.random() * calculatedAccessFrameLength);
+                    this.randomSubslotIndex = Math.floor(Math.random() * this.calculatedAccessFrameLength);
                     this.subslotsWaited = 0;
                     this.log(`Randomly selected subslot index ${this.randomSubslotIndex} within access frame to attempt to transmit in.`);
 
@@ -347,13 +358,13 @@ export class MS {
                     if (subslotUsed == 0) {
                         if (this.checkRandomSubslot(time, subslotFields[0], 0)) {
                             // We attempted to transmit in the first subslot, so we can return early here
-                            return new TickTransmitted(this, 0);
+                            return new TickTransmitted(this, 0, false, this.usedAccessCode, {time, ssn: 0}, this.calculatedAccessFrameLength);
                         }
                     }
 
                     // Always check the second subslot as well
                     if (this.checkRandomSubslot(time, subslotFields[1], 1)) {
-                        return new TickTransmitted(this, 1);
+                        return new TickTransmitted(this, 1, false, this.usedAccessCode, {time, ssn: 1}, this.calculatedAccessFrameLength);
                     }
                 }
 
@@ -396,7 +407,7 @@ export class MS {
                 // Check if either of the subslots in this slot are to be counted
                 for (let i = 0; i < subslotFields.length; i++) {
                     if (this.checkRandomSubslot(time, subslotFields[i]!, i)) {
-                        return new TickTransmitted(this, i as 0 | 1);
+                        return new TickTransmitted(this, i as 0 | 1, false, this.usedAccessCode!, {time, ssn: i as 0 | 1}, this.calculatedAccessFrameLength);
                     }
                 }
 

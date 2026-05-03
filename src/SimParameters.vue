@@ -30,6 +30,24 @@ defineProps<{
             <input type="checkbox" v-model="sim.autoAckIfNoCollision" />
         </label>
     </div>  
+    <div class="parameter">
+        <label>
+            Auto-RTT if idle?
+            <input type="checkbox" v-model="sim.autoRequestIfIdle" />
+        </label>
+    </div>  
+    <div class="parameter">
+        <label>
+            Skip over irrelevant slots?
+            <input type="checkbox" v-model="sim.skipIrrelevantSlots" />
+        </label>
+    </div>
+    <div class="parameter">
+        <label>
+            Mute unused slots?
+            <input type="checkbox" v-model="sim.muteUnusedSlots" />
+        </label>
+    </div>
 </div>
 
 </template>

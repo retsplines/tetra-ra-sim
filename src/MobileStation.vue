@@ -11,6 +11,10 @@ defineProps<{
     mobileStation: MS
 }>()
 
+function getEnabledAccessCodes(ms: MS): AccessCode[] {
+    return ms.sim.getAccessCodes().filter(accessCode => accessCode.nu > 0);
+}
+
 </script>
 
 <template>
@@ -30,7 +34,7 @@ defineProps<{
 
             <div class="access-codes">
                 Access Code <select v-model="mobileStation.accessCode">
-                    <option v-for="(accessCode, index) in mobileStation.sim.getAccessCodes()" :value="accessCode">
+                    <option v-for="(accessCode, index) in getEnabledAccessCodes(mobileStation)" :value="accessCode">
                         {{ AC.getName(index) }}
                     </option>
                 </select>

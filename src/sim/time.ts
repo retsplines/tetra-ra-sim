@@ -22,6 +22,10 @@ export class TDMATime {
         this.frame = frame;
         this.multiframe = multiframe;
     }
+
+    public toClassName(): string {
+        return `time-m${this.multiframe}f${this.frame}t${this.slot}`;
+    }
     
     public clone(): TDMATime {
         return new TDMATime(this.slot, this.frame, this.multiframe);

@@ -8,10 +8,34 @@
         <div class="section">
             <div class="heading">Control</div>
             <div class="body">
-                {{ sim.getTime().toString() }}
-                <button @click="tick()">Advance</button>
-                <button @click="autorun = !autorun">{{  autorun ? 'Stop' : 'Start' }}</button>
-                <button @click="reset()">Reset</button>
+                <div class="time">
+                    {{ sim.getTime().toString() }}
+                </div>
+                <div class="controls">
+                    <button v-bind:disabled="autorun" @click="tick()">Single</button>
+                    <button @click="toggleAutorun()">{{  autorun ? 'Stop' : 'Run' }}</button>
+                    <select v-bind:disabled="autorun" v-model="tickTime">
+                        <option value="420">30x Speed</option>
+                        <option value="210">60x Speed</option>
+                        <option value="84">100x Speed</option>
+                    </select>
+                    <button v-bind:disabled="autorun" @click="reset()">Reset</button>
+                </div>
+            </div>      
+        </div>
+
+        <div class="section">
+            <div class="heading">Statistics</div>
+            <div class="body">
+                <div>Attempts: {{ sim.totalAttempts }}</div>
+                <div v-if="sim.totalAttempts > 0">
+                    Successes: {{ sim.totalSuccesses }} 
+                    ({{ Math.round(sim.totalSuccesses / sim.totalAttempts * 100) }}%)
+                </div>
+                <div v-if="sim.totalAttempts > 0">
+                    Collisions: {{ sim.totalCollisions }} 
+                    ({{ Math.round(sim.totalCollisions / sim.totalAttempts * 100) }}%)
+                </div>
             </div>      
         </div>
 
@@ -33,6 +57,7 @@
             <div class="heading">
                 MS Population
                 <button @click="addMS()">Add MS</button>
+                <button @click="requestAll()">RTT All</button>
             </div>
             <div class="body">
                 <MobileStation v-for="(mobileStation, index) in sim.getMobileStations()" :mobile-station="mobileStation" :id="index"></MobileStation>
@@ -42,9 +67,17 @@
     </div>
 
     <div class="main">
-
-        <Slot v-for="(slotLog, index) in slotLogs" :slot-log="slotLog" :sim="sim" :id="index"></Slot>
-
+        <div class="log">
+            <Slot 
+                v-bind:class="slotLog.time.toClassName()"
+                v-for="(slotLog, index) in slotLogs"
+                v-show="!slotLog.muted"
+                :slot-log="slotLog"
+                :sim="sim" 
+                :id="index">{{ slotLog.muted }}
+            </Slot>
+        </div>
+        <span ref="endOfLog"></span>
     </div>
 
 </template>
@@ -59,20 +92,31 @@ import MobileStation from './MobileStation.vue';
 import SimParameters from './SimParameters.vue';
 import Slot from './Slot.vue';
 import type { SlotLog } from './sim/slot_log';
+import type { TDMATime } from './sim/time';
 
 const sim = ref<Sim>(new Sim());
 
 // 1 frame = 56ms
 // 1 slot = 14ms
-// Autorun by default at 1/30 speed, so 1 slot = 420ms
+let intervalId: number | null = null;
 const autorun = ref(false);
-setInterval(() => {
-    if (autorun.value) {
-        tick();
-    }
-}, 420);    
-
+const tickTime = ref(210);   
 const slotLogs = ref<SlotLog[]>([]);
+const hideIrrelevantSlots = ref(true);
+
+// Scroll to the end of the log whenever a new slot is added
+const endOfLog = ref<HTMLElement | null>(null); 
+
+/**
+ * Request to transmit for all effectively idle MS instances.
+ */
+function requestAll() {
+    sim.value.getMobileStations().forEach(ms => {
+        if (ms.isEffectivelyIdle()) {
+            ms.requestMessage();
+        }
+    });
+}
 
 /**
  * Add an MS to the simulation, by default using Access Code A.
@@ -85,10 +129,34 @@ function addMS() {
 }
 
 /**
+ * Toggle autorun on/off.
+ */
+function toggleAutorun() {
+
+    autorun.value = !autorun.value;
+    if (autorun.value) {
+        intervalId = setInterval(() => {
+            tick();
+        }, tickTime.value);
+    } else {
+        if (intervalId !== null) {
+            clearInterval(intervalId);
+            intervalId = null;
+        }
+    }
+
+}
+
+/**
  * Advance the simulation by one tick, and log any events that occur.
  */
 function tick() {
-    slotLogs.value.push(sim.value.tick());
+    const log = sim.value.tick();
+
+    slotLogs.value.push(log);
+    if (endOfLog.value) {
+        endOfLog.value.scrollIntoView({ behavior: 'smooth' });
+    }
 }
 
 function reset() {
@@ -96,6 +164,9 @@ function reset() {
     slotLogs.value = [];
     autorun.value = false;
 }
+
+// Add an MS to start
+addMS();
 
 </script>
 
@@ -106,6 +177,7 @@ function reset() {
     height: 100vh;
     background-color: #f0f0f0;
     float: left;
+    overflow-y: scroll;
 
     .title {
         padding: 10px;
@@ -128,19 +200,39 @@ function reset() {
     }
 }
 
-.main {
-    background-color: #ffffff;
+.controls {
     display: flex;
-    flex-direction: row;
-    flex: 1;
-    gap: 5px;
-    padding: 5px;
-    // wrap
-    flex-wrap: wrap;
-    // align items to the top
-    align-items: flex-start;
-    // justify content to the start
-    justify-content: flex-start;
+    gap: 10px;
+    margin-top: 10px;
+
+    button {
+        flex-grow: 1;
+    }
+}
+
+.time {
+    font-size: 1.4em;
+    font-weight: bold;
+}
+
+.main {
+    overflow-y: scroll;
+    height: 100vh;
+    background-color: #ffffff;
+
+    .log {
+        display: flex;
+        flex-direction: row;
+        flex: 1;
+        gap: 5px;
+        padding: 5px;
+        // wrap
+        flex-wrap: wrap;
+        // align items to the top
+        align-items: flex-start;
+        // justify content to the start
+        justify-content: flex-start;
+    }
 }
 
 </style>

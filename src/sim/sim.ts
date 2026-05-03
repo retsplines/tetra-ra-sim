@@ -2,9 +2,9 @@ import { AccessCode, ALL_SUBSCRIBER_CLASSES } from './access_code.ts';
 import { AccessField } from './access_field.ts';
 import { BaseFrameLength } from './base_frame_length.ts';
 import { IMM } from './imm.ts';
-import { MS } from './ms.ts';
+import { MS, State } from './ms.ts';
 import { SlotLog } from './slot_log.ts';
-import { TickEvent } from './tick.ts';
+import { TickEvent, TickReceivedResponse, TickTransmitted } from './tick.ts';
 import { TDMATime } from './time.ts';
 
 export class Sim {
@@ -33,6 +33,29 @@ export class Sim {
      * Whether to automatically acknowledge an MS's transmission if it is the only one to transmit in that subslot (i.e. no collision occurs).
      */
     public autoAckIfNoCollision = true;
+
+    /**
+     * Whether to automatically request access for an MS if it is idle.
+     */
+    public autoRequestIfIdle = false;
+
+    /**
+     * Whether to fast-forward time over slots that have no relevance in the RA protocol
+     * These slots are defined as slots where no access code TS Ptr indicates validity for that slot.
+     */
+    public skipIrrelevantSlots = true;
+
+    /**
+     * Whether to mute unused slots.
+     */
+    public muteUnusedSlots = true;
+
+    /**
+     * Statistics for the simulation.x
+     */
+    public totalAttempts = 0;
+    public totalSuccesses = 0
+    public totalCollisions = 0;
 
     /**
      * Access Codes that are registered within the simulation.
@@ -91,6 +114,16 @@ export class Sim {
         this.population.push(ms);
     }
 
+    private slotIsRelevant(time: TDMATime): boolean {
+        // Slots for which no access codes timeslot pointers point to are irrelevant
+        for (const accessCode of this.accessCodes) {
+            if (accessCode.timeslotPointer[time.getSlot() - 1]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * Advance the simulation by one tick, returning any events that occur during that tick.
      */
@@ -118,28 +151,63 @@ export class Sim {
             accessField2.baseFrameLength = BaseFrameLength.CLCHSubslot;
         }
 
-        this.time.tick();
         let slotLog = new SlotLog(this.time.clone(), [accessField1, accessField2]);
 
         console.log(`Tick ${this.time.toString()}: SSN1 Access Code ${AccessCode.getName(subslot1AccessCodeIndex)}, SSN2 Access Code ${AccessCode.getName(subslot2AccessCodeIndex)}`);
-
         for (const ms of this.population) {
+
+            // If autoRequestIfIdle is enabled and the MS is idle, set the MS to have a request
+            if (this.autoRequestIfIdle && ms.isEffectivelyIdle()) {
+                ms.requestMessage();
+                console.log(`Auto-requesting access for MS ${ms.issi} since it is idle`);
+            }
+
             let msEventOrNull = ms.tick(this.time, [accessField1, accessField2]);
             if (msEventOrNull instanceof TickEvent) {
                 slotLog.pushEvent(msEventOrNull);
+
+                if (msEventOrNull instanceof TickTransmitted) {
+                    this.totalAttempts++;
+                }
+
+                if (msEventOrNull instanceof TickReceivedResponse) {
+                    this.totalSuccesses++;
+                }
             }
         }
 
-        if (slotLog.subslotTransmissions[0].length == 1 && this.autoAckIfNoCollision) {
-            // If there was exactly 1 transmission in subslot 1, acknowledge it
-            slotLog.subslotTransmissions[0][0]!.provideResponse();
-            console.log(`Auto-acknowledging MS ${slotLog.subslotTransmissions[0][0]!.issi} in subslot 1`);
+        for (const ssn of [0, 1]) {
+            if (slotLog.subslotTransmissions[ssn]!.length == 1) {
+                if (this.autoAckIfNoCollision) {
+                    // If there was exactly 1 transmission in subslot 1, acknowledge it
+                    slotLog.subslotTransmissions[ssn]![0]!.who.provideResponse();
+                    console.log(`Auto-acknowledging MS ${slotLog.subslotTransmissions[ssn]![0]!.who.issi} in subslot ${ssn + 1}`);
+                }
+            } else if (slotLog.subslotTransmissions[ssn]!.length > 1) {
+                // Increment total collisions if there was more than 1 transmission (i.e. a collision)
+                this.totalCollisions++;
+            }
         }
 
-        if (slotLog.subslotTransmissions[1].length == 1 && this.autoAckIfNoCollision) {
-            // If there was exactly 1 transmission in subslot 2, acknowledge it
-            slotLog.subslotTransmissions[1][0]!.provideResponse();
-            console.log(`Auto-acknowledging MS ${slotLog.subslotTransmissions[1][0]!.issi} in subslot 2`);
+        // Advance time
+        this.time.tick();
+
+        // Advance time further if skipIrrelevantSlots is enabled and the next slot is irrelevant
+        if (this.skipIrrelevantSlots) {
+            while (!this.slotIsRelevant(this.time)) {
+                console.log(`Skipping irrelevant slot ${this.time.toString()}`);
+                this.time.tick();
+            }
+        }
+
+        if (
+            this.muteUnusedSlots && 
+            slotLog.subslotTransmissions[0]!.length == 0 && 
+            slotLog.subslotTransmissions[1]!.length == 0 &&
+            slotLog.receptions.length == 0
+        ) {
+            console.log(`Muting unused slot ${slotLog.time.toString()} there were no transmissions in either subslot`);
+            slotLog.muted = true;
         }
         
         return slotLog;
@@ -155,6 +223,11 @@ export class Sim {
         for (const ms of this.population) {
             ms.reset();
         }
+
+        // Reset statistics
+        this.totalAttempts = 0;
+        this.totalSuccesses = 0;
+        this.totalCollisions = 0;
     }
 
     public getTime(): TDMATime {

@@ -1,4 +1,6 @@
+import type { AccessCode } from "./access_code";
 import type { MS } from "./ms";
+import type { TDMATime } from "./time";
 
 /**
  * Possible outcome for a tick for an MS.
@@ -11,7 +13,14 @@ export abstract class TickEvent {
  * A tick where an MS transmitted an access attempt.
  */
 export class TickTransmitted extends TickEvent {
-    constructor(public who: MS, public subslot: 0 | 1) {
+    constructor(
+        public who: MS, 
+        public subslot: 0 | 1, 
+        public wasImmediate: boolean,
+        public accessCodeUsed?: AccessCode,
+        public accessFrameStarted?: {time: TDMATime, ssn: 0|1},
+        public accessFrameLength?: number
+    ) {
         super(who);
     }
 }

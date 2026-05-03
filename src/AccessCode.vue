@@ -18,6 +18,8 @@ const props = defineProps<{
         <span class="id" v-bind:class="'access-code-' + AC.getName(props.id)">{{ AC.getName(props.id) }}</span>
             <label>
                 IMM
+                <span v-if="accessCode.imm == 15">(Imm)</span>
+                <span v-if="accessCode.imm == 0">(AR)</span>
                 <input type="number" min="0" max="15" step="1" v-model="accessCode.imm">
             </label>
             <label>
@@ -26,6 +28,7 @@ const props = defineProps<{
             </label>
             <label>
                 Nu
+                <span v-if="accessCode.nu == 0">(OFF)</span>
                 <input type="number" min="0" max="15" step="1" v-model="accessCode.nu">
             </label>
             <label>
@@ -55,6 +58,7 @@ const props = defineProps<{
 
     label {
         font-size: 0.8em;
+        width: 25%;
 
         input[type="number"] {
             width: 50px;

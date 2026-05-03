@@ -28,11 +28,11 @@ function getAccessCodeName(accessCode: AccessCode): string {
                 <div class="subslot-heading" v-bind:title="'Subslot used Base Frame-Length ' + getBaseFrameLengthName(slotLog.accessFields[n - 1]!.baseFrameLength)">
                     {{ getBaseFrameLengthName(slotLog.accessFields[n - 1]!.baseFrameLength, true) }}
                 </div>
-                <div v-for="ms in slotLog.subslotTransmissions[n - 1]!" class="tx">
-                    {{ ms.issi }}?
+                <div v-bind:title="'MS ' + event.who.issi + ' transmitted'" v-for="event in slotLog.subslotTransmissions[n - 1]!" class="tx">
+                    {{ event.who.issi }}?
                 </div>
-                <div v-if="n == 1" v-for="ms in slotLog.receptions" class="rx">
-                    {{ ms.issi }}!
+                <div v-bind:title="'MS ' + event.who.issi + ' received response'" v-if="n == 1" v-for="event in slotLog.receptions" class="rx">
+                    {{ event.who.issi }}!
                 </div>
             </div>
         </div>
