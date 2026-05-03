@@ -10,7 +10,6 @@ export default defineConfig({
     vue(),
     vueDevTools(),
   ],
-  base: '/tetra-ra-sim/',
   build: {
     outDir: 'dist'
   },
