@@ -68,7 +68,7 @@
         <div class="section">
             <div class="heading">Simulation Parameters</div>
             <div class="body">
-                <SimParameters :sim="sim"></SimParameters>
+                <SimParameters :sim="sim as Sim"></SimParameters>
             </div>
         </div>
 

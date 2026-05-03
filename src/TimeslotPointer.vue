@@ -1,15 +1,15 @@
 <script setup lang="ts">
 
-const model = defineModel();
+const model = defineModel<[boolean, boolean, boolean, boolean]>();
 
 </script>
 
 <template>
     <div class="timeslot-pointer">
-        <input type="checkbox" v-model="model[0]">
-        <input type="checkbox" v-model="model[1]">
-        <input type="checkbox" v-model="model[2]">
-        <input type="checkbox" v-model="model[3]">
+        <input type="checkbox" v-model="model![0]">
+        <input type="checkbox" v-model="model![1]">
+        <input type="checkbox" v-model="model![2]">
+        <input type="checkbox" v-model="model![3]">
     </div>
 </template>
 

@@ -1,42 +1,13 @@
-# tetra-ra-sim
+# TETRA Random Access Simulator
 
-This template should help get you started developing with Vue 3 in Vite.
+Weekend Vue project to play around with the TETRA Random Access Protocol parameters.
 
-## Recommended IDE Setup
+For more information about the procedures/protocol, see [ETSI EN 300 392-2](https://www.etsi.org/deliver/etsi_en/300300_300399/30039202/03.08.01_60/en_30039202v030801p.pdf) §23.5.1.
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+## Caveats
 
-## Recommended Browser Setup
-
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
-```sh
-npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
-npm run dev
-```
-
-### Type-Check, Compile and Minify for Production
-
-```sh
-npm run build
-```
+* Ignores the implications of PDU priority. This includes ignoring the PDU priority for MS Access Code binding.
+* An MS may only have one usable Access Code at once (there is no consideration made for Subscriber Class).
+* Ignores the implication of grant/reservations.
+* Ignores various timers & counters that limit the longevity of access attempts (except WT & Nu).
+* Various other limitations - this is really just for playing/understanding the basic behaviour of the protocol, not testing detailed specific scenarios.
