@@ -13,38 +13,38 @@ defineProps<{
 
 <div>
     <div class="parameter">
-        <label>
+        <label title="The pattern of access codes to be used in the simulation. Subslots will be allocated access codes in a round-robin manner according to this pattern.">
             Access Code Pattern
             <input type="text" pattern="[A-D]+" v-model="sim.accessCodePattern" />
         </label>
     </div>
     <div class="parameter">
-        <label>
+        <label title="The base frame length for the next subslot.">
             Base Frame-Length
             <BaseFrameLength v-model="sim.baseFrameLength"></BaseFrameLength>
         </label>
     </div>
     <div class="parameter">
-        <label>
+        <label title="Automatically Ack any attempts that have no collisions.">
             Auto-Ack if no collision?
             <input type="checkbox" v-model="sim.autoAckIfNoCollision" />
         </label>
     </div>  
     <div class="parameter">
-        <label>
+        <label title="Automatically request a transmission for any MS that is effectively idle.">
             Auto-RTT if idle?
             <input type="checkbox" v-model="sim.autoRequestIfIdle" />
         </label>
     </div>  
     <div class="parameter">
-        <label>
+        <label title="Skip over slots that are not used by any access code.">
             Skip over irrelevant slots?
             <input type="checkbox" v-model="sim.skipIrrelevantSlots" />
         </label>
     </div>
     <div class="parameter">
-        <label>
-            Mute unused slots?
+        <label title="Hide slots that have no activity.">
+            Hide unused slots?
             <input type="checkbox" v-model="sim.muteUnusedSlots" />
         </label>
     </div>

@@ -25,6 +25,29 @@
         </div>
 
         <div class="section">
+            <div class="heading">Inspected Attempt</div>
+            <div class="body" v-if="inspectedAttempt">
+                <div>ISSI {{ inspectedAttempt.who.issi }}</div>
+                <div>RTT @ {{ inspectedAttempt.requestTime.toString() }}</div>
+                <div v-if="inspectedAttempt.accessCodeUsed">
+                    Used Access Code {{ AC.getName(sim.getAccessCodes().indexOf(inspectedAttempt.accessCodeUsed)) }}
+                </div>
+                <div v-if="!inspectedAttempt.wasImmediate">
+                    <strong>Randomised access</strong><br />
+                    Access Frame started at {{ inspectedAttempt.accessFrameStarted!.time.toString() }}, subslot {{ inspectedAttempt.accessFrameStarted!.ssn + 1 }}<br />
+                    Access Frame length: {{ inspectedAttempt.accessFrameLength }} subslots<br />
+                    Rolled subslot #{{ inspectedAttempt.rolledSubslot! + 1}}<br />
+                </div>
+                <div v-else>
+                    <strong>Immediate access</strong>.
+                </div>
+            </div>
+            <div class="body" v-else>
+                Click on an attempt in the log to inspect it here.
+            </div>
+        </div>
+
+        <div class="section">
             <div class="heading">Statistics</div>
             <div class="body">
                 <div>Attempts: {{ sim.totalAttempts }}</div>
@@ -35,6 +58,9 @@
                 <div v-if="sim.totalAttempts > 0">
                     Collisions: {{ sim.totalCollisions }} 
                     ({{ Math.round(sim.totalCollisions / sim.totalAttempts * 100) }}%)
+                </div>
+                <div v-if="sim.totalAttempts > 0">
+                    Average access delay: {{ getAverageAccessDelay() }} slots ({{ convertSlotsToSeconds(parseFloat(getAverageAccessDelay())) }} seconds)
                 </div>
             </div>      
         </div>
@@ -66,16 +92,19 @@
 
     </div>
 
-    <div class="main">
+    <div class="main" @click="inspectAttempt(null)">
         <div class="log">
             <Slot 
                 v-bind:class="slotLog.time.toClassName()"
                 v-for="(slotLog, index) in slotLogs"
                 v-show="!slotLog.muted"
-                :slot-log="slotLog"
-                :sim="sim" 
-                :id="index">{{ slotLog.muted }}
-            </Slot>
+                :slot-log="slotLog as SlotLog"
+                :sim="sim as Sim" 
+                :id="index"
+                :highlight-ssn1="inspectedAttempt?.releaventTimes?.some(t => t.time.toString() == slotLog.time.toString() && t.ssn == 0) ?? false"
+                :highlight-ssn2="inspectedAttempt?.releaventTimes?.some(t => t.time.toString() == slotLog.time.toString() && t.ssn == 1) ?? false"
+                @inspectAttempt="inspectAttempt"
+            ></Slot>
         </div>
         <span ref="endOfLog"></span>
     </div>
@@ -87,14 +116,16 @@
 import { ref } from 'vue';
 import { Sim }  from './sim/sim';
 import { MS }  from './sim/ms';
+import { AccessCode as SimAccessCode } from './sim/access_code';
 import AccessCode from './AccessCode.vue';
 import MobileStation from './MobileStation.vue';
 import SimParameters from './SimParameters.vue';
 import Slot from './Slot.vue';
 import type { SlotLog } from './sim/slot_log';
-import type { TDMATime } from './sim/time';
+import { TickTransmitted } from './sim/tick';
 
 const sim = ref<Sim>(new Sim());
+const AC = SimAccessCode; 
 
 // 1 frame = 56ms
 // 1 slot = 14ms
@@ -102,10 +133,17 @@ let intervalId: number | null = null;
 const autorun = ref(false);
 const tickTime = ref(210);   
 const slotLogs = ref<SlotLog[]>([]);
-const hideIrrelevantSlots = ref(true);
 
 // Scroll to the end of the log whenever a new slot is added
 const endOfLog = ref<HTMLElement | null>(null); 
+const inspectedAttempt = ref<TickTransmitted | null>(null);
+
+/**
+ * Inspect an access attempt in the sidebar.
+ */
+function inspectAttempt(attempt: TickTransmitted | null) {
+    inspectedAttempt.value = attempt;
+}
 
 /**
  * Request to transmit for all effectively idle MS instances.
@@ -124,8 +162,28 @@ function requestAll() {
 function addMS() {
     // Generate an incremental ISSI based on 1024 + the current number of MS instances
     const issi = 1024 + sim.value.getMobileStations().length;
-    const ms = new MS(issi, sim.value.getAccessCodes()[0], sim.value);
+    const ms = new MS(issi, sim.value.getAccessCodes()[0], sim.value as Sim);
     sim.value.addMS(ms);
+}
+
+function convertSlotsToSeconds(slots: number): string {
+    return (slots * 14 / 1000).toFixed(2);
+}
+
+/**
+ * Compute the average access delay across all successful attempts.
+ */
+function getAverageAccessDelay(): string {
+    let accessDelaySum = 0;
+    let count = 0;
+    for (const slotLog of slotLogs.value) {
+        for (const event of slotLog.receptions) {
+            accessDelaySum += event.slotsBetweenRequestAndResponse;
+            count++;
+        }
+    }
+
+    return count > 0 ? (accessDelaySum / count).toFixed(1) : "0";
 }
 
 /**
@@ -163,6 +221,11 @@ function reset() {
     sim.value.reset();
     slotLogs.value = [];
     autorun.value = false;
+    if (intervalId !== null) {
+        clearInterval(intervalId);
+        intervalId = null;
+    }
+    inspectedAttempt.value = null;
 }
 
 // Add an MS to start
@@ -226,11 +289,8 @@ addMS();
         flex: 1;
         gap: 5px;
         padding: 5px;
-        // wrap
         flex-wrap: wrap;
-        // align items to the top
         align-items: flex-start;
-        // justify content to the start
         justify-content: flex-start;
     }
 }

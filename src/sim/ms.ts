@@ -60,11 +60,20 @@ export class MS {
     // How many subslots we have skipped over while waiting for our selected random subslot within the access frame
     private subslotsWaited = 0;
 
+    // Track the subslots we have waited through within the access frame for debugging/visualisation purposes
+    private waitedRandomSubslots: {time: TDMATime, ssn: 0|1}[] = [];
+
+    // Track where the current access frame started
+    private accessFrameStart: {time: TDMATime, ssn: 0|1} | null = null;
+
     // The slot number in which our request was made, used to determine when WT expires
     private requestSlot = 0;
 
     // Has a response been provided?
     private responseProvided = false;
+
+    // The time at which a request became available
+    private requestedTime: TDMATime|null = null;
 
     constructor(
         public readonly issi: number,
@@ -89,7 +98,7 @@ export class MS {
      * Mark the MS as having a message to send.
      */
     public requestMessage() {
-        
+        this.requestedTime = this.sim.getTime().clone();
         this.state = State.HasMessageToSend;
 
         // IMM is in *frames*, but we're counting in slots, so we need to convert it to slots here
@@ -122,6 +131,8 @@ export class MS {
         this.usedAccessCode = null;
         this.subslotsWaited = 0;
         this.requestSlot = 0;
+        this.waitedRandomSubslots = [];
+        this.accessFrameStart = null;
     }
 
     /**
@@ -259,6 +270,9 @@ export class MS {
                 // Not there yet, but this subslot counts towards waiting for the random subslot
                 this.subslotsWaited ++;
                 this.log(`Subslot ${time.toString()}-${subslotIndex + 1} counts towards waiting for random subslot. Waited ${this.subslotsWaited}/${this.randomSubslotIndex}.`);
+
+                // Track the relevant times for debugging/visualisation purposes
+                this.waitedRandomSubslots.push({time: time.clone(), ssn: subslotIndex as 0 | 1});
             }
         } else {
             this.log(`Subslot ${time.toString()}-${subslotIndex + 1} does not count towards waiting for random subslot.`);
@@ -303,15 +317,27 @@ export class MS {
                 if (validSubslots.length > 0) {
                     // Attempt to transmit in the selected subslot
                     this.transmit(time, validSubslots[0]! as 0 | 1);
-                    return new TickTransmitted(this, validSubslots[0]! as 0 | 1, true);
+                    return new TickTransmitted(
+                        this,
+                        validSubslots[0]! as 0 | 1,
+                        this.requestedTime!.clone(),
+                        true,
+                        this.usedAccessCode!,
+                        this.accessFrameStart!,
+                        this.randomSubslotIndex,
+                        this.calculatedAccessFrameLength,
+                        []
+                    );
                 }
 
-                // Has IMM expired?
-                if (this.immSlotsLeft == 0) {
-                    this.log(`IMM expired, randomising...`);
-                    this.state = State.WaitingForAccessFrame;
-                } else {
-                    this.immSlotsLeft--;
+                if (this.accessCode.imm != IMM.Immediate) {
+                    // Has IMM expired?
+                    if (this.immSlotsLeft == 0) {
+                        this.log(`IMM has expired, randomising...`);
+                        this.state = State.WaitingForAccessFrame;
+                    } else {
+                        this.immSlotsLeft--;
+                    }
                 }
 
                 break;
@@ -334,8 +360,12 @@ export class MS {
                 }
 
                 if (subslotField !== null) {
+
+                    // Clear any previously tracked random subslot waiting times
+                    this.waitedRandomSubslots = [];
                     
                     this.calculatedAccessFrameLength = getSubslotCount(subslotField.baseFrameLength) * (this.accessCode.frameLengthFactor ? 4 : 1);
+                    this.accessFrameStart = {time: time.clone(), ssn: subslotUsed as 0 | 1};
                     this.log(`Found suitable access frame (len ${this.calculatedAccessFrameLength}) starting at subslot ${time.toString()}-${subslotUsed + 1}`);
 
                     // We found the start of a suitable access frame
@@ -358,13 +388,33 @@ export class MS {
                     if (subslotUsed == 0) {
                         if (this.checkRandomSubslot(time, subslotFields[0], 0)) {
                             // We attempted to transmit in the first subslot, so we can return early here
-                            return new TickTransmitted(this, 0, false, this.usedAccessCode, {time, ssn: 0}, this.calculatedAccessFrameLength);
+                            return new TickTransmitted(
+                                this,
+                                0,
+                                this.requestedTime!.clone(),
+                                false,
+                                this.usedAccessCode,
+                                this.accessFrameStart!,
+                                this.randomSubslotIndex,
+                                this.calculatedAccessFrameLength,
+                                this.waitedRandomSubslots
+                            );
                         }
                     }
 
                     // Always check the second subslot as well
                     if (this.checkRandomSubslot(time, subslotFields[1], 1)) {
-                        return new TickTransmitted(this, 1, false, this.usedAccessCode, {time, ssn: 1}, this.calculatedAccessFrameLength);
+                        return new TickTransmitted(
+                            this,
+                            1,
+                            this.requestedTime!.clone(),
+                            false,
+                            this.usedAccessCode,
+                            this.accessFrameStart!,
+                            this.randomSubslotIndex,
+                            this.calculatedAccessFrameLength,
+                            this.waitedRandomSubslots
+                        );
                     }
                 }
 
@@ -379,7 +429,7 @@ export class MS {
                     if (this.responseProvided) {
                         this.state = State.Succeeded;
                         this.log(`Response received, transmission succeeded.`);
-                        return new TickReceivedResponse(this);
+                        return new TickReceivedResponse(this, time.toTimestamp() - this.requestedTime!.toTimestamp());
                     } else {
                         this.wtOpportunities--;
                         this.log(`Downlink opportunity for response, but no response provided. WT opportunities left: ${this.wtOpportunities}.`);
@@ -407,7 +457,17 @@ export class MS {
                 // Check if either of the subslots in this slot are to be counted
                 for (let i = 0; i < subslotFields.length; i++) {
                     if (this.checkRandomSubslot(time, subslotFields[i]!, i)) {
-                        return new TickTransmitted(this, i as 0 | 1, false, this.usedAccessCode!, {time, ssn: i as 0 | 1}, this.calculatedAccessFrameLength);
+                        return new TickTransmitted(
+                            this, 
+                            i as 0 | 1, 
+                            this.requestedTime!.clone(), 
+                            false, 
+                            this.usedAccessCode!, 
+                            this.accessFrameStart!,
+                            this.randomSubslotIndex,
+                            this.calculatedAccessFrameLength, 
+                            this.waitedRandomSubslots
+                        );
                     }
                 }
 

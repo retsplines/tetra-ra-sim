@@ -48,7 +48,7 @@ export class Sim {
     /**
      * Whether to mute unused slots.
      */
-    public muteUnusedSlots = true;
+    public muteUnusedSlots = false;
 
     /**
      * Statistics for the simulation.x
@@ -64,7 +64,7 @@ export class Sim {
     private accessCodes: [AccessCode, AccessCode, AccessCode, AccessCode] = [
 
         new AccessCode(
-            IMM.Immediate,
+            IMM.AlwaysRandomise,
             3,
             3,
             false,
