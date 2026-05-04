@@ -3,6 +3,7 @@
     <div class="sidebar">
         <div class="title">
             <h1>TETRA Random Access Sim</h1>
+            <h2>Made by <a target="_blank" href="https://furry.engineer/@ret">@ret</a> | <a target="_blank" href="https://foxdog.blog">Blog</a> | <a href="https://github.com/retsplines/tetra-ra-sim" target="_blank">GitHub</a></h2>
         </div>
 
         <div class="section">
@@ -249,6 +250,11 @@ addMS();
         background-color: #e0e0e0;
         text-align: center;
         font-size: 0.6em;
+
+        h2 {
+            color: #777;
+            font-weight: normal;
+        }
     }
 
     .section {
