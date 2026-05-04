@@ -81,9 +81,11 @@
         
         <div class="section">
             <div class="heading">
-                MS Population
-                <button @click="addMS()">Add MS</button>
-                <button @click="requestAll()">RTT All</button>
+                <div class="text">MS Population</div>
+                <div class="buttons">
+                    <button @click="addMS()">Add MS</button>&nbsp;
+                    <button @click="requestAll()">RTT All</button>
+                </div>
             </div>
             <div class="body">
                 <MobileStation v-for="(mobileStation, index) in sim.getMobileStations()" :mobile-station="mobileStation" :id="index"></MobileStation>
@@ -252,10 +254,21 @@ addMS();
     .section {
         background-color: #dedede;
         .heading {
+            display: flex;
+            flex-direction: row;
             font-weight: bold;
             margin-bottom: 5px;
             padding: 10px;
             background-color: #d0d0d0;
+
+            .text {
+                flex-grow: 1;
+            }
+
+            .buttons {
+                align-self: center;
+            }
+
         }
         .body {
             padding: 10px;

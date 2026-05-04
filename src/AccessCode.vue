@@ -54,6 +54,7 @@ const props = defineProps<{
     .id {
         font-weight: bold;
         font-size: 1.5em;
+        background-color: transparent !important;
     }
 
     label {

@@ -261,6 +261,10 @@ export class MS {
 
         this.log(`Checking if subslot ${time.toString()}-${subslotIndex + 1} counts towards waiting for random subslot...`);
         if (this.subslotIsCountableWithinAccessFrame(time, accessField)) {
+
+            // Track the relevant times for debugging/visualisation purposes
+            this.waitedRandomSubslots.push({time: time.clone(), ssn: subslotIndex as 0 | 1});
+            
             if (this.subslotsWaited == this.randomSubslotIndex) {
                 // This is the subslot we selected, so we attempt to transmit here
                 this.log(`Subslot ${time.toString()}-${subslotIndex + 1} is the random subslot we are looking for!`);
@@ -270,9 +274,6 @@ export class MS {
                 // Not there yet, but this subslot counts towards waiting for the random subslot
                 this.subslotsWaited ++;
                 this.log(`Subslot ${time.toString()}-${subslotIndex + 1} counts towards waiting for random subslot. Waited ${this.subslotsWaited}/${this.randomSubslotIndex}.`);
-
-                // Track the relevant times for debugging/visualisation purposes
-                this.waitedRandomSubslots.push({time: time.clone(), ssn: subslotIndex as 0 | 1});
             }
         } else {
             this.log(`Subslot ${time.toString()}-${subslotIndex + 1} does not count towards waiting for random subslot.`);
