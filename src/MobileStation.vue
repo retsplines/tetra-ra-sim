@@ -42,9 +42,8 @@ function getEnabledAccessCodes(ms: MS): AccessCode[] {
             
         </div>
         <div class="actions">
-            <button v-if="mobileStation.getState() == State.Idle" @click="mobileStation.requestMessage()" title="Request to Transmit">RTT</button>
+            <button v-if="mobileStation.isEffectivelyIdle()" @click="mobileStation.requestMessage()" title="Request to Transmit">RTT</button>
             <button v-if="mobileStation.getState() == State.WaitingForResponse" @click="mobileStation.provideResponse()" title="Acknowledge">Ack!</button>
-            <button v-if="mobileStation.getState() == State.Succeeded || mobileStation.getState() == State.GivenUp" @click="mobileStation.reset()">Reset</button>
         </div>
     </div>
 </template>

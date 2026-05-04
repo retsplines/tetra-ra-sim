@@ -98,6 +98,10 @@ export class MS {
      * Mark the MS as having a message to send.
      */
     public requestMessage() {
+
+        // Reset first
+        this.reset();
+
         this.requestedTime = this.sim.getTime().clone();
         this.state = State.HasMessageToSend;
 
